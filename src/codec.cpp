@@ -26,7 +26,7 @@ std::vector<std::uint8_t> Codec::encode(const Frame& frame)
     if (frame.payload.size() > Codec::max_payload_size) {
         return {};
     }
-    
+
     encoded.push_back(Codec::sync_byte);
     encoded.push_back(frame.command);
     encoded.push_back(static_cast<std::uint8_t>(frame.payload.size()));
@@ -64,7 +64,6 @@ DecodeResult Codec::decode(const std::vector<std::uint8_t>& bytes)
     if (bytes.back() != crc8(std::vector<std::uint8_t>(bytes.begin() + 1, bytes.end() - 1))) {
         result.ok = false;
         result.error = ParseError::bad_checksum;
-        return result;
     }
     else {
         result.ok = true;
@@ -72,84 +71,6 @@ DecodeResult Codec::decode(const std::vector<std::uint8_t>& bytes)
     }
 
     return result;
-}
-
-std::vector<Frame> StreamDecoder::feed(std::uint8_t)
-{
-    return {};
-}
-
-void StreamDecoder::reset()
-{
-}
-
-std::size_t StreamDecoder::buffered_size() const
-{
-    return buffer_.size();
-}
-
-SampleWindow::SampleWindow(std::size_t capacity)
-    : capacity_(capacity)
-{
-}
-
-void SampleWindow::add(std::int32_t)
-{
-}
-
-std::optional<std::int32_t> SampleWindow::average() const
-{
-    return std::nullopt;
-}
-
-std::size_t SampleWindow::size() const
-{
-    return samples_.size();
-}
-
-std::size_t SampleWindow::capacity() const
-{
-    return capacity_;
-}
-
-bool SampleWindow::full() const
-{
-    return false;
-}
-
-void SampleWindow::clear()
-{
-    samples_.clear();
-}
-
-LifecycleState SensorLifecycle::state() const
-{
-    return state_;
-}
-
-void SensorLifecycle::begin()
-{
-}
-
-void SensorLifecycle::initialization_succeeded()
-{
-}
-
-void SensorLifecycle::fail()
-{
-}
-
-void SensorLifecycle::receive_sample()
-{
-}
-
-void SensorLifecycle::timeout()
-{
-}
-
-void SensorLifecycle::reset()
-{
-    state_ = LifecycleState::uninitialized;
 }
 
 }  // namespace sensor

@@ -1,9 +1,10 @@
 # Sensor C++ ramp-up exercises
 
 This is a deliberately incomplete C++17 project for the 50 workday tasks in
-[`EXERCISES.md`](EXERCISES.md). The tests are written first. The initial
-implementation should compile, but the behavioral tests should fail until you
-implement the corresponding exercises.
+[`EXERCISES.md`](EXERCISES.md), with detailed assignments in `exercises/`.
+The tests are written first. The initial implementation should compile, but
+the behavioral tests should fail until you implement the corresponding
+exercises.
 
 ## Prerequisites
 
@@ -65,17 +66,23 @@ ctest --test-dir build --output-on-failure
 
 ## Project map
 
-- `include/sensor/sensor.hpp` — public contract to implement against
-- `src/sensor.cpp` — active implementation file compiled by CMake
-- `src/sensor_empty.cpp` — preserved snapshot of the original empty starter
-  implementation; kept for reference and not compiled by CMake
-- `tests/` — behavior-grouped GoogleTest files
-- `EXERCISES.md` — defect/improvement task sequence and acceptance goals
-- `CMakeLists.txt` — library, GoogleTest, and CTest setup
+- `include/sensor/sensor.hpp` — shared public contract and component APIs
+- `src/codec.cpp` — frame CRC, encoding, and decoding implementation
+- `src/stream_decoder.cpp` — incremental stream parser implementation
+- `src/sample_window.cpp` — rolling sample window implementation
+- `src/sensor_lifecycle.cpp` — lifecycle state machine implementation
+- `starter/src/` — empty implementation files matching the active component
+  split; copy these over `src/` to restore the exercise starting point
+- `tests/` — behavior-grouped GoogleTest files; see the source/test map in
+  `EXERCISES.md` to find the test group for each component
+- `EXERCISES.md` — exercise index, source/test map, and completion record
+- `exercises/` — detailed assignments with per-task files and focused checks
+- `CMakeLists.txt` — library source list, GoogleTest, and CTest setup
 
 ## TDD loop
 
-1. Read the corresponding exercise in `EXERCISES.md` and the API under test.
+1. Read the corresponding exercise linked from `EXERCISES.md` and the API
+   under test.
 2. Run the relevant focused CTest group and inspect the assertion failure.
 3. Implement the smallest change that satisfies the stated behavior.
 4. Re-run the focused check, then run the full suite when practical.

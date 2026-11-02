@@ -7,7 +7,10 @@ include(FetchContent)
 option(SENSOR_ENABLE_WARNINGS "Enable useful compiler warnings" ON)
 
 add_library(sensor_core
-    src/sensor.cpp
+    src/codec.cpp
+    src/stream_decoder.cpp
+    src/sample_window.cpp
+    src/sensor_lifecycle.cpp
 )
 target_include_directories(sensor_core PUBLIC include)
 target_compile_features(sensor_core PUBLIC cxx_std_17)
