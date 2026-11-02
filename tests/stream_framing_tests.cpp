@@ -46,6 +46,41 @@ TEST(StreamDecoder, EmitsCompleteFrame)
     EXPECT_EQ(frames.front().payload, sample_frame().payload);
 }
 
+TEST(StreamDecoder, PreservesSyncByteInsidePayload)
+{
+    const Frame frame{0x31, {Codec::sync_byte}};
+    const auto encoded = wire_frame(frame);
+    StreamDecoder decoder;
+    std::vector<Frame> frames;
+
+    for (const auto byte : encoded) {
+        const auto emitted = decoder.feed(byte);
+        frames.insert(frames.end(), emitted.begin(), emitted.end());
+    }
+
+    ASSERT_EQ(frames.size(), 1U);
+    EXPECT_EQ(frames.front().command, frame.command);
+    EXPECT_EQ(frames.front().payload, frame.payload);
+    EXPECT_EQ(decoder.buffered_size(), 0U);
+}
+
+TEST(StreamDecoder, EmitsMaximumPayloadFrame)
+{
+    const Frame frame{0x31, std::vector<std::uint8_t>(Codec::max_payload_size, 0x5A)};
+    const auto encoded = wire_frame(frame);
+    StreamDecoder decoder;
+    std::vector<Frame> frames;
+
+    for (const auto byte : encoded) {
+        frames = decoder.feed(byte);
+    }
+
+    ASSERT_EQ(frames.size(), 1U);
+    EXPECT_EQ(frames.front().command, frame.command);
+    EXPECT_EQ(frames.front().payload, frame.payload);
+    EXPECT_EQ(decoder.buffered_size(), 0U);
+}
+
 TEST(StreamDecoder, ClearsBufferAfterEmittingFrame)
 {
     const auto encoded = wire_frame(sample_frame());
@@ -76,15 +111,21 @@ TEST(StreamDecoder, RecoversAfterBadChecksum)
     bad.back() ^= 1;
     const auto good = wire_frame(Frame{0x20, {0x77}});
     StreamDecoder decoder;
-    for (const auto byte : bad) {
-        decoder.feed(byte);
-    }
     std::vector<Frame> frames;
-    for (const auto byte : good) {
-        frames = decoder.feed(byte);
+
+    for (const auto byte : bad) {
+        const auto emitted = decoder.feed(byte);
+        EXPECT_TRUE(emitted.empty());
     }
+
+    for (const auto byte : good) {
+        const auto emitted = decoder.feed(byte);
+        frames.insert(frames.end(), emitted.begin(), emitted.end());
+    }
+
     ASSERT_EQ(frames.size(), 1U);
     EXPECT_EQ(frames.front().command, 0x20);
+    EXPECT_EQ(frames.front().payload, (std::vector<std::uint8_t>{0x77}));
 }
 
 TEST(StreamDecoder, EmitsConsecutiveFrames)
