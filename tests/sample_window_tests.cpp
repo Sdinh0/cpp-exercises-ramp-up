@@ -111,4 +111,25 @@ TEST(SampleWindow, AveragesInt32BoundaryValuesWithoutOverflow)
     EXPECT_EQ(*window.average(), 0);
 }
 
-}  // namespace
+TEST(SampleWindow, AveragesLargePositiveNumberOfSamplesWithoutOverflow)
+{
+    SampleWindow window(2);
+    window.add(std::numeric_limits<std::int32_t>::max());
+    window.add(std::numeric_limits<std::int32_t>::max());
+    ASSERT_TRUE(window.average().has_value());
+    EXPECT_EQ(*window.average(), std::numeric_limits<std::int32_t>::max());
+
+}  
+
+TEST(SampleWindow, AveragesLargeNegativeSamplesWithoutOverflow)
+{
+    SampleWindow window(2);
+    window.add(std::numeric_limits<std::int32_t>::min());
+    window.add(std::numeric_limits<std::int32_t>::min());
+    ASSERT_TRUE(window.average().has_value());
+    EXPECT_EQ(*window.average(), std::numeric_limits<std::int32_t>::min());
+}
+
+}
+
+// namespace

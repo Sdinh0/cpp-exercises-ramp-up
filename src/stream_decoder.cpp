@@ -15,30 +15,24 @@ std::vector<Frame> StreamDecoder::feed(std::uint8_t byte)
         if (buffer_[0] != Codec::sync_byte) {
             // Invalid sync byte, discard bytes until the next sync byte
             const auto sync_byte_pos = std::find(buffer_.begin(), buffer_.end(), Codec::sync_byte);
-            if (sync_byte_pos == buffer_.end()) {
-                reset();
-                break; // No sync byte found, clear the buffer and wait for more data
-            }
-            else {
-                buffer_.erase(buffer_.begin(), sync_byte_pos);
-            }
-            continue; // Try to process the buffer again after discarding bytes
+            buffer_.erase(buffer_.begin(), sync_byte_pos);
         }
-
-        if (buffer_.size() == static_cast<std::size_t>(3) && payload_length > Codec::max_payload_size) {
+        else if (buffer_.size() == static_cast<std::size_t>(3) && payload_length > Codec::max_payload_size) {
             // Invalid payload length, reset buffer
             reset();
         }
-        else if (buffer_.size() >= static_cast<std::size_t>(expected_frame_size)) { /* sync, command, payload length + payload + checksum */
-            // We have a complete frame
+        else if (buffer_.size() >= static_cast<std::size_t>(expected_frame_size)) { 
+            /* Process the complete frame */
             const std::vector<std::uint8_t> frame_bytes(buffer_.begin(), buffer_.begin() + expected_frame_size);
             const auto result = Codec::decode(frame_bytes);
             if (result.ok) {
+                /* Remove the processed frame and trailing bytes from the buffer */
                 const auto sync_byte_pos = std::find(buffer_.begin() + expected_frame_size, buffer_.end(), Codec::sync_byte); 
-                buffer_.erase(buffer_.begin(), sync_byte_pos); // Remove the processed frame and trailing bytes from the buffer
+                buffer_.erase(buffer_.begin(), sync_byte_pos);
                 frames.push_back(result.frame);
             } else {
-                buffer_.erase(buffer_.begin(), buffer_.begin() + 1); // Discard the first byte and try again
+                /* The buffer could contain valid frame data, delete the starting sync byte, then try again */
+                buffer_.erase(buffer_.begin(), buffer_.begin() + 1); 
             }
         }
         else {

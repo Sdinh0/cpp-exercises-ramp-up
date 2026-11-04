@@ -7,13 +7,30 @@ SampleWindow::SampleWindow(std::size_t capacity)
 {
 }
 
-void SampleWindow::add(std::int32_t)
+void SampleWindow::add(std::int32_t sample)
 {
+    if (capacity_ == 0) {
+        return;
+    }
+
+    if (full()) {
+        samples_.erase(samples_.begin());
+    }
+    samples_.push_back(sample);
 }
 
 std::optional<std::int32_t> SampleWindow::average() const
 {
-    return std::nullopt;
+    if (samples_.empty()) {
+        return std::nullopt;
+    }
+    else{
+        long long sum = 0;
+        for (const auto& sample : samples_) {
+            sum += sample;
+        }
+        return sum / static_cast<long long>(samples_.size());
+    }
 }
 
 std::size_t SampleWindow::size() const
@@ -28,7 +45,7 @@ std::size_t SampleWindow::capacity() const
 
 bool SampleWindow::full() const
 {
-    return false;
+    return samples_.size() >= capacity_;
 }
 
 void SampleWindow::clear()
