@@ -9,11 +9,13 @@ SampleWindow::SampleWindow(std::size_t capacity)
 
 void SampleWindow::add(std::int32_t sample)
 {
+    // A zero-capacity window intentionally stores no samples.
     if (capacity_ == 0) {
         return;
     }
 
     if (full()) {
+        // Evict the oldest value so the window always contains the newest samples.
         samples_.erase(samples_.begin());
     }
     samples_.push_back(sample);
@@ -22,6 +24,7 @@ void SampleWindow::add(std::int32_t sample)
 std::optional<std::int32_t> SampleWindow::average() const
 {
     if (samples_.empty()) {
+        // No average exists until at least one sample has been added.
         return std::nullopt;
     }
     else{

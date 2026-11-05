@@ -10,28 +10,28 @@ std::vector<Frame> StreamDecoder::feed(std::uint8_t byte)
 
     while (buffer_.size() >= 3) {
         const auto payload_length = static_cast<std::size_t>(buffer_[2]);
-        const auto expected_frame_size = 3 + payload_length + 1; /* sync, command, payload length + payload + checksum */
+        const auto expected_frame_size = 3 + payload_length + 1; // Header, payload, and checksum.
 
         if (buffer_[0] != Codec::sync_byte) {
-            // Invalid sync byte, discard bytes until the next sync byte
+            // Discard noise before the next possible frame boundary.
             const auto sync_byte_pos = std::find(buffer_.begin(), buffer_.end(), Codec::sync_byte);
             buffer_.erase(buffer_.begin(), sync_byte_pos);
         }
         else if (buffer_.size() == static_cast<std::size_t>(3) && payload_length > Codec::max_payload_size) {
-            // Invalid payload length, reset buffer
+            // An impossible length makes this candidate unusable.
             reset();
         }
         else if (buffer_.size() >= static_cast<std::size_t>(expected_frame_size)) { 
-            /* Process the complete frame */
+            // Decode only the candidate frame; trailing bytes remain stream input.
             const std::vector<std::uint8_t> frame_bytes(buffer_.begin(), buffer_.begin() + expected_frame_size);
             const auto result = Codec::decode(frame_bytes);
             if (result.ok) {
-                /* Remove the processed frame and trailing bytes from the buffer */
+                // Keep a later sync byte so a following frame can be parsed.
                 const auto sync_byte_pos = std::find(buffer_.begin() + expected_frame_size, buffer_.end(), Codec::sync_byte); 
                 buffer_.erase(buffer_.begin(), sync_byte_pos);
                 frames.push_back(result.frame);
             } else {
-                /* The buffer could contain valid frame data, delete the starting sync byte, then try again */
+                // Retry from the next byte in case another sync is embedded in the candidate.
                 buffer_.erase(buffer_.begin(), buffer_.begin() + 1); 
             }
         }
@@ -41,7 +41,18 @@ std::vector<Frame> StreamDecoder::feed(std::uint8_t byte)
         }
     }
 
-    /* Process the buffer and return any complete frames */
+    // Return every complete frame recovered from this byte.
+    return frames;
+}
+
+std::vector<Frame> StreamDecoder::feed(const std::uint8_t* bytes, std::size_t size)
+{
+    std::vector<Frame> frames;
+    // Reuse byte-wise parsing so chunk and single-byte input behave identically.
+    for (std::size_t i = 0; i < size; ++i) {
+        const auto emitted = feed(bytes[i]);
+        frames.insert(frames.end(), emitted.begin(), emitted.end());
+    }
     return frames;
 }
 

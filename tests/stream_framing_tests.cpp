@@ -46,6 +46,64 @@ TEST(StreamDecoder, EmitsCompleteFrame)
     EXPECT_EQ(frames.front().payload, sample_frame().payload);
 }
 
+TEST(StreamDecoder, AcceptsAFrameSplitAcrossInputChunks)
+{
+    const auto encoded = wire_frame(sample_frame());
+    StreamDecoder decoder;
+
+    const auto first = decoder.feed(encoded.data(), 2);
+    EXPECT_TRUE(first.empty());
+    EXPECT_EQ(decoder.buffered_size(), 2U);
+
+    const auto second =
+        decoder.feed(encoded.data() + 2, encoded.size() - 2);
+    ASSERT_EQ(second.size(), 1U);
+    EXPECT_EQ(second.front().command, sample_frame().command);
+    EXPECT_EQ(second.front().payload, sample_frame().payload);
+    EXPECT_EQ(decoder.buffered_size(), 0U);
+}
+
+TEST(StreamDecoder, EmitsMultipleFramesFromOneInputChunk)
+{
+    auto bytes = wire_frame(sample_frame());
+    const auto second_frame = wire_frame(Frame{0x20, {0x03}});
+    bytes.insert(bytes.end(), second_frame.begin(), second_frame.end());
+    StreamDecoder decoder;
+
+    const auto frames = decoder.feed(bytes.data(), bytes.size());
+
+    ASSERT_EQ(frames.size(), 2U);
+    EXPECT_EQ(frames[0].command, sample_frame().command);
+    EXPECT_EQ(frames[1].command, 0x20);
+}
+
+TEST(StreamDecoder, IgnoresNoiseAndRecoversWithinAnInputChunk)
+{
+    auto bytes = std::vector<std::uint8_t>{0x11, 0x22};
+    const auto encoded = wire_frame(sample_frame());
+    bytes.insert(bytes.end(), encoded.begin(), encoded.end());
+    StreamDecoder decoder;
+
+    const auto frames = decoder.feed(bytes.data(), bytes.size());
+
+    ASSERT_EQ(frames.size(), 1U);
+    EXPECT_EQ(frames.front().command, sample_frame().command);
+    EXPECT_EQ(frames.front().payload, sample_frame().payload);
+}
+
+TEST(StreamDecoder, EmptyChunkDoesNotChangeBufferedInput)
+{
+    StreamDecoder decoder;
+    const auto frame = wire_frame(sample_frame());
+    decoder.feed(frame.front());
+    const auto buffered_before = decoder.buffered_size();
+
+    const auto frames = decoder.feed(nullptr, 0);
+
+    EXPECT_TRUE(frames.empty());
+    EXPECT_EQ(decoder.buffered_size(), buffered_before);
+}
+
 TEST(StreamDecoder, PreservesSyncByteInsidePayload)
 {
     const Frame frame{0x31, {Codec::sync_byte}};

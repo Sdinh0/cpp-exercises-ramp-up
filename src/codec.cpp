@@ -4,6 +4,7 @@ namespace sensor {
 
 std::uint8_t Codec::crc8(const std::vector<std::uint8_t>& bytes)
 {
+    // CRC-8/ATM uses polynomial 0x07 with an initial value of zero.
     const std::uint8_t polynomial = 0x07;
     std::uint8_t crc = 0x00;
     for (const auto value : bytes) {
@@ -27,6 +28,7 @@ std::vector<std::uint8_t> Codec::encode(const Frame& frame)
         return {};
     }
 
+    // The CRC covers command, length, and payload; the sync byte is excluded.
     encoded.push_back(Codec::sync_byte);
     encoded.push_back(frame.command);
     encoded.push_back(static_cast<std::uint8_t>(frame.payload.size()));
@@ -53,6 +55,7 @@ DecodeResult Codec::decode(const std::vector<std::uint8_t>& bytes)
     result.frame.command = bytes[1];
     const std::uint8_t payload_length = bytes[2];
 
+    // Reject both truncated and trailing data: decode accepts exactly one frame.
     if (bytes.size() != static_cast<std::size_t>(4 + payload_length) || payload_length > Codec::max_payload_size) {
         result.ok = false;
         result.error = ParseError::bad_length;

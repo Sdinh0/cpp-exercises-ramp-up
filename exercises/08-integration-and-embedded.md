@@ -1,27 +1,40 @@
-# Exercises 36-40: Integration and embedded constraints
+# Integration and embedded constraints
 
 These tasks connect the existing components and document the boundary between
 the host-testable library and target-specific code.
 
-## 36. End-to-end path
+## End-to-end sensor path
 
-Add an integration test that encodes a frame, feeds its bytes through
-`StreamDecoder`, and uses the decoded payload to add a value to `SampleWindow`.
+Review and extend the existing simulated end-to-end test. It should start a
+`SensorDriver` through `SensorLifecycle`, exchange encoded frames through
+buffered byte-transport HAL calls and `StreamDecoder`, read signed samples,
+and add them to `SampleWindow`.
 
-- **Update:** a new `tests/integration_tests.cpp` and `CMakeLists.txt`
-- **Verify:** register and run the integration test through CTest.
+- **Update:** `tests/sensor_driver_tests.cpp` and `CMakeLists.txt` only if a
+  missing integration case requires it
+- **Verify:** run
+  `SensorStackIntegration.StartsDriverAndFeedsDecodedSamplesToWindow`.
 
-## 37. Host/target boundary
+## Target HAL adapter boundary
 
-Document which codec, stream, sample, and lifecycle code is hardware
-independent. Describe what a target-specific adapter would own, such as
-hardware I/O and translating device events into library calls.
+Document the layers: codec, stream decoder, sample window, driver, and
+lifecycle policy are hardware independent. A target-specific `SensorHal`
+adapter owns UART/SPI/I2C or other hardware I/O and exposes buffered reads and
+writes with transfer status, byte counts, and timeouts to `SensorDriver`.
+Each write submits a complete encoded request in one call: on success the HAL
+reports the full byte count, and it handles any lower-level partial transfers
+internally. Reads may return fewer bytes than requested; the driver feeds
+those chunks to `StreamDecoder`, and rejects errors, invalid byte counts, and
+zero-progress reads. The HAL transports bytes, not protocol frames;
+`SensorDriver` uses `Codec` and the byte/range `StreamDecoder::feed` overloads
+above it. The simulated HAL remains the host-test implementation; do not make
+normal host tests depend on board hardware or a target toolchain.
 
 - **Update:** `README.md`
 - **Verify:** review the project map and ensure host tests require no board or
   target toolchain.
 
-## 38. Memory review
+## Memory review
 
 Inspect vector allocations and the stream buffer bound. In your own notes,
 describe one viable no-heap alternative for a constrained target without
@@ -31,7 +44,7 @@ changing the current public API.
   `include/sensor/sensor.hpp`
 - **Update:** your own notes; do not change the API for this review.
 
-## 39. Error policy
+## Error policy
 
 Document whether malformed transport frames should alter lifecycle state, and
 why parsing errors and lifecycle transitions remain separate responsibilities.
@@ -40,13 +53,15 @@ why parsing errors and lifecycle transitions remain separate responsibilities.
 - **Verify:** compare the documented policy with `src/codec.cpp`,
   `src/stream_decoder.cpp`, and `src/sensor_lifecycle.cpp`.
 
-## 40. Target smoke check
+## Target HAL adapter and smoke check
 
-If a board or target toolchain is available, add an explicitly invoked target
-compile or smoke test. Keep normal host tests runnable without it. If no target
-is available, document that limitation rather than making host validation
-depend on unavailable tooling.
+If a board and target toolchain are available, implement a target-specific
+buffered byte-transport `SensorHal` adapter and add an explicitly invoked
+target compile or smoke test. Keep the driver and lifecycle hardware
+independent and normal host tests runnable without the target. If no target is
+available, document the intended adapter boundary and that limitation rather
+than making host validation depend on unavailable tooling.
 
-- **Update:** target-specific build configuration and `README.md`, only if a
-  target toolchain is available
+- **Update:** target-specific adapter/build configuration and `README.md`,
+  only if a target toolchain is available
 - **Verify:** host configure/build/CTest still works independently.

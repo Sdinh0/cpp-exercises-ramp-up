@@ -1,10 +1,10 @@
 # Sensor C++ ramp-up exercises
 
-This is a deliberately incomplete C++17 project for the 50 workday tasks in
-[`EXERCISES.md`](EXERCISES.md), with detailed assignments in `exercises/`.
-The tests are written first. The initial implementation should compile, but
-the behavioral tests should fail until you implement the corresponding
-exercises.
+This is a deliberately incomplete C++17 project for the topic-based learning
+path in [`EXERCISES.md`](EXERCISES.md), with detailed assignments in
+`exercises/`. The tests are written first. The initial implementation should
+compile, but the behavioral tests should fail until you implement the
+corresponding components.
 
 ## Prerequisites
 
@@ -66,17 +66,24 @@ ctest --test-dir build --output-on-failure
 
 ## Project map
 
-- `include/sensor/sensor.hpp` — shared public contract and component APIs
+- `include/sensor/sensor.hpp` — shared public contract, component APIs, and
+  the buffered byte-transport `SensorHal`, `SensorDevice`, and `SensorDriver`
+  contracts, including typed `SensorStatus` results and `SampleResult`
 - `src/codec.cpp` — frame CRC, encoding, and decoding implementation
-- `src/stream_decoder.cpp` — incremental stream parser implementation
+- `src/stream_decoder.cpp` — incremental stream parser for byte and buffer
+  input
 - `src/sample_window.cpp` — rolling sample window implementation
-- `src/sensor_lifecycle.cpp` — lifecycle state machine implementation
-- `starter/src/` — empty implementation files matching the active component
+- `src/sensor_driver.cpp` — sensor startup and sample protocol over the
+  buffered byte HAL, with distinct transport, protocol, and device outcomes
+- `src/sensor_lifecycle.cpp` — startup orchestration through `SensorDevice`,
+  returning the first failing `SensorStatus`
+- `starter/src/` — starter implementations matching the active component
   split; copy these over `src/` to restore the exercise starting point
-- `tests/` — behavior-grouped GoogleTest files; see the source/test map in
+- `tests/` — behavior-grouped GoogleTest files, including a simulated transport
+  and end-to-end sensor stack check; see the source/test map in
   `EXERCISES.md` to find the test group for each component
-- `EXERCISES.md` — exercise index, source/test map, and completion record
-- `exercises/` — detailed assignments with per-task files and focused checks
+- `EXERCISES.md` — topic index and source/test map
+- `exercises/` — topic guides with implementation tasks and focused checks
 - `CMakeLists.txt` — library source list, GoogleTest, and CTest setup
 
 ## TDD loop

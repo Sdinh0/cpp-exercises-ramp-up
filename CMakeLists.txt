@@ -10,6 +10,7 @@ add_library(sensor_core
     src/codec.cpp
     src/stream_decoder.cpp
     src/sample_window.cpp
+    src/sensor_driver.cpp
     src/sensor_lifecycle.cpp
 )
 target_include_directories(sensor_core PUBLIC include)
@@ -37,6 +38,7 @@ add_executable(sensor_exercises
     tests/stream_framing_tests.cpp
     tests/stream_recovery_tests.cpp
     tests/sample_window_tests.cpp
+    tests/sensor_driver_tests.cpp
     tests/sensor_lifecycle_tests.cpp
 )
 target_link_libraries(sensor_exercises PRIVATE sensor_core GTest::gtest_main)

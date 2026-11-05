@@ -1,14 +1,20 @@
-# Exercises 11-15: Stream framing and parsing
+# Stream framing and parsing
 
 Implement the incremental parser in
 [`src/stream_decoder.cpp`](../src/stream_decoder.cpp). `StreamDecoder::feed`
-receives exactly one byte per call and returns a vector of zero or more
-**complete, valid** `Frame` values found by processing that byte. It must keep
-any unfinished candidate internally for later calls. The public frame format
-and limits are defined by `Codec` in
+supports both a single byte and a pointer/size byte range. Each call returns a
+vector of zero or more **complete, valid** `Frame` values found in the input.
+It must keep any unfinished candidate internally for later calls. The public
+frame format and limits are defined by `Codec` in
 [`include/sensor/sensor.hpp`](../include/sensor/sensor.hpp); use
 `Codec::decode` to validate a candidate rather than duplicating the codec's
 checksum rules.
+
+The range overload models real buffered I/O: one read can contain part of a
+frame, exactly one frame, several frames, or noise followed by frames. Its
+behavior must be equivalent to calling the single-byte overload once for each
+input byte in order. A zero-length range is a no-op; the pointer must refer to
+at least `size` readable bytes whenever `size` is nonzero.
 
 ## What counts as a complete frame?
 
@@ -44,7 +50,8 @@ A5 10 02 01 02 AA
 +----------------- sync
 ```
 
-Calling `feed` once for each byte should behave like this:
+Calling `feed` once for each byte or supplying the same bytes in chunks should
+behave like this:
 
 | Bytes received so far | Expected result |
 |---|---|
@@ -75,15 +82,17 @@ CRC. The length is zero, not an instruction to wait for a payload byte.
 
 For a simple stream of one valid frame at a time, `feed` returns an empty
 vector for every prefix and a one-element vector when the final byte arrives.
-With consecutive input, each frame is emitted once, in order, on the call
-that supplies its final byte.
+With chunked input, a frame is emitted by the call that contains its final
+byte. If that chunk contains multiple frames, all are emitted once and in wire
+order.
 
-## 11. Incremental parsing
+## Incremental parsing
 
 Append incoming bytes to the receive buffer and use the sync and length fields
-to determine the candidate's expected size. Do not emit a frame while any
-payload or the CRC byte is still missing. A candidate is not valid until
-`Codec::decode` accepts it.
+to determine the candidate's expected size. Process every byte in a supplied
+range in order, emitting any complete frames while retaining an incomplete
+trailing candidate. Do not emit a frame while any payload or the CRC byte is
+still missing. A candidate is not valid until `Codec::decode` accepts it.
 
 - **Update:** `src/stream_decoder.cpp`
 - **Verify:** `StreamDecoder` tests in `tests/stream_framing_tests.cpp`
@@ -91,7 +100,7 @@ payload or the CRC byte is still missing. A candidate is not valid until
   `EmitsCompleteFrame` emits the decoded command and payload only after the
   final byte.
 
-## 12. Resource cleanup
+## Resource cleanup
 
 After emitting a valid frame, remove all of that frame's bytes from the
 receive buffer. The buffer must not retain a completed frame or any bytes
@@ -102,7 +111,7 @@ before its next candidate.
 - **Key check:** `ClearsBufferAfterEmittingFrame` expects a buffered size of
   zero after the frame is consumed.
 
-## 13. Noise recovery
+## Noise recovery
 
 Bytes received before the next `0xA5` sync marker are noise. Ignore them
 without treating them as command, length, payload, or checksum. Begin a
@@ -113,7 +122,7 @@ candidate at the sync marker and parse normally from there.
 - **Key check:** `IgnoresNoiseBeforeSync` sends two noise bytes before a valid
   encoded frame; the decoder must still emit that frame.
 
-## 14. Corrupt-stream recovery
+## Corrupt-stream recovery
 
 When the expected number of bytes has arrived but `Codec::decode` reports a
 bad checksum, do not emit the candidate. Discard the bad candidate and resume
@@ -125,7 +134,22 @@ candidate must not permanently block later input.
 - **Key check:** `RecoversAfterBadChecksum` sends a corrupted frame followed
   by a valid frame; only the valid frame should be emitted.
 
-## 15. Multiple frames
+## Chunked input
+
+Implement `feed(const std::uint8_t* bytes, std::size_t size)` so it consumes a
+whole received buffer while preserving the exact behavior of the byte overload.
+It must handle partial frames across calls, multiple frames in one call, and
+noise before a sync byte. An empty chunk must leave the decoder state
+unchanged.
+
+- **Update:** `src/stream_decoder.cpp`
+- **Verify:** chunked-input tests in `tests/stream_framing_tests.cpp`
+- **Key checks:** `AcceptsAFrameSplitAcrossInputChunks`,
+  `EmitsMultipleFramesFromOneInputChunk`,
+  `IgnoresNoiseAndRecoversWithinAnInputChunk`, and
+  `EmptyChunkDoesNotChangeBufferedInput`.
+
+## Multiple frames
 
 Support back-to-back encoded frames with no separator. After consuming one
 valid frame, continue with any remaining buffered bytes; each following frame

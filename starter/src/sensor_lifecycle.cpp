@@ -2,32 +2,22 @@
 
 namespace sensor {
 
+SensorLifecycle::SensorLifecycle(SensorDevice& device)
+    : device_(device)
+{
+}
+
 LifecycleState SensorLifecycle::state() const
 {
     return state_;
 }
 
-void SensorLifecycle::begin()
+SensorStatus SensorLifecycle::begin()
 {
+    return SensorStatus::invalid_state;
 }
 
-void SensorLifecycle::initialization_succeeded()
-{
-}
-
-void SensorLifecycle::fail()
-{
-}
-
-void SensorLifecycle::receive_sample()
-{
-}
-
-void SensorLifecycle::timeout()
-{
-}
-
-void SensorLifecycle::reset()
+void SensorLifecycle::reset_state()
 {
     state_ = LifecycleState::uninitialized;
 }

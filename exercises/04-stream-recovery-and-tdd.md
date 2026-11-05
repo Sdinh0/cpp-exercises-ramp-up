@@ -1,13 +1,13 @@
-# Exercises 16-20: Stream recovery and TDD
+# Stream recovery and TDD
 
 Continue work in [`src/stream_decoder.cpp`](../src/stream_decoder.cpp), using
 the interface and buffer in [`include/sensor/sensor.hpp`](../include/sensor/sensor.hpp).
 For the byte layout, expected frame size, and definition of a complete valid
-frame, see [Exercises 11-15: Stream framing](03-stream-framing.md). A frame is
+frame, see [Stream framing](03-stream-framing.md). A frame is
 `4 + payload length` bytes total: sync, command, length, payload bytes, and
 CRC. The permitted payload length is 0-16 bytes.
 
-## 16. Reset behavior
+## Reset behavior
 
 Make `StreamDecoder::reset` discard partial input. After reset, previously
 buffered bytes must not contribute to a later frame.
@@ -17,7 +17,7 @@ buffered bytes must not contribute to a later frame.
 - **Meaning:** If only a prefix such as sync, command, or length has arrived,
   reset forgets it. Subsequent bytes are interpreted as a fresh stream.
 
-## 17. Empty payload
+## Empty payload
 
 Treat a frame with a zero-length payload as a complete valid frame. Do not wait
 for payload bytes that the length field says are absent.
@@ -27,7 +27,7 @@ for payload bytes that the length field says are absent.
 - **Meaning:** The complete wire frame is still four bytes: sync, command,
   length `0`, and CRC over command plus length.
 
-## 18. Buffer bound defect
+## Buffer bound defect
 
 Ensure malformed or repeated partial input cannot grow the receive buffer
 without limit. Keep the buffered data within the largest possible protocol
@@ -41,7 +41,7 @@ frame, including sync, header, payload, and checksum.
   sync, command, and an impossible length of `0xFF`; the buffer must stay at
   or below the maximum-frame size.
 
-## 19. TDD practice
+## TDD practice
 
 Before implementing a small variation of parser behavior, add a focused
 GoogleTest case that fails for the current behavior. Observe the failure, make
@@ -53,7 +53,7 @@ payload, or an invalid length followed by a valid frame.
   `src/stream_decoder.cpp`
 - **Verify:** run the `StreamDecoder` test group before and after the change.
 
-## 20. Test quality review
+## Test quality review
 
 Add at least one assertion for an invalid parser boundary. Run the entire
 CTest suite and explain what the failure output identifies.

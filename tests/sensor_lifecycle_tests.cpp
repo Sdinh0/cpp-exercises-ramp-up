@@ -2,153 +2,164 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace {
 
 using sensor::LifecycleState;
+using sensor::SampleResult;
+using sensor::SensorDevice;
 using sensor::SensorLifecycle;
+using sensor::SensorStatus;
+
+enum class StartupCall {
+    hardware_reset,
+    configure,
+    self_test,
+    start
+};
+
+class FakeSensorDevice final : public SensorDevice {
+public:
+    SensorStatus hardware_reset() override
+    {
+        return invoke(StartupCall::hardware_reset);
+    }
+
+    SensorStatus configure() override
+    {
+        return invoke(StartupCall::configure);
+    }
+
+    SensorStatus self_test() override
+    {
+        return invoke(StartupCall::self_test);
+    }
+
+    SensorStatus start() override
+    {
+        return invoke(StartupCall::start);
+    }
+
+    SampleResult read_sample() override
+    {
+        return {SensorStatus::invalid_state, 0};
+    }
+
+    SensorLifecycle* lifecycle{};
+    std::optional<StartupCall> fail_at;
+    SensorStatus failure_status{SensorStatus::sensor_rejected};
+    std::vector<StartupCall> calls;
+    std::vector<LifecycleState> states_seen;
+
+private:
+    SensorStatus invoke(StartupCall call)
+    {
+        calls.push_back(call);
+        if (lifecycle != nullptr) {
+            states_seen.push_back(lifecycle->state());
+        }
+        return fail_at.has_value() && *fail_at == call
+            ? failure_status
+            : SensorStatus::ok;
+    }
+};
+
+const std::vector<StartupCall> startup_sequence{
+    StartupCall::hardware_reset,
+    StartupCall::configure,
+    StartupCall::self_test,
+    StartupCall::start
+};
 
 TEST(SensorLifecycle, StartsUninitialized)
 {
-    const SensorLifecycle lifecycle;
+    FakeSensorDevice device;
+    const SensorLifecycle lifecycle(device);
     EXPECT_EQ(lifecycle.state(), LifecycleState::uninitialized);
 }
 
-TEST(SensorLifecycle, BeginStartsInitialization)
+TEST(SensorLifecycle, StartsDeviceInOrder)
 {
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::initializing);
-}
+    FakeSensorDevice device;
+    SensorLifecycle lifecycle(device);
+    device.lifecycle = &lifecycle;
 
-TEST(SensorLifecycle, SuccessfulInitializationMakesSensorReady)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.initialization_succeeded();
+    EXPECT_EQ(lifecycle.begin(), SensorStatus::ok);
+
+    EXPECT_EQ(device.calls, startup_sequence);
+    EXPECT_EQ(device.states_seen,
+              std::vector<LifecycleState>(startup_sequence.size(),
+                                          LifecycleState::initializing));
     EXPECT_EQ(lifecycle.state(), LifecycleState::ready);
 }
 
-TEST(SensorLifecycle, FailureEntersFaultState)
+TEST(SensorLifecycle, StopsAtTheFirstFailedStartupStep)
 {
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.fail();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
+    for (std::size_t failure_index = 0;
+         failure_index < startup_sequence.size();
+         ++failure_index) {
+        SCOPED_TRACE(failure_index);
+
+        FakeSensorDevice device;
+        device.fail_at = startup_sequence[failure_index];
+        SensorLifecycle lifecycle(device);
+        device.lifecycle = &lifecycle;
+
+        EXPECT_EQ(lifecycle.begin(), SensorStatus::sensor_rejected);
+
+        const auto expected_calls =
+            std::vector<StartupCall>(startup_sequence.begin(),
+                                     startup_sequence.begin() + failure_index + 1);
+        EXPECT_EQ(device.calls, expected_calls);
+        EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
+    }
 }
 
-TEST(SensorLifecycle, TimeoutDuringInitializationEntersFaultState)
+TEST(SensorLifecycle, ResetStateAllowsACompleteNewInitializationAttempt)
 {
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.timeout();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
-}
+    FakeSensorDevice device;
+    device.fail_at = StartupCall::self_test;
+    SensorLifecycle lifecycle(device);
 
-TEST(SensorLifecycle, ResetReturnsToUninitialized)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.initialization_succeeded();
-    lifecycle.reset();
+    EXPECT_EQ(lifecycle.begin(), SensorStatus::sensor_rejected);
+    ASSERT_EQ(lifecycle.state(), LifecycleState::fault);
+
+    EXPECT_EQ(lifecycle.begin(), SensorStatus::invalid_state);
+    EXPECT_EQ(device.calls.size(), 3U);
+    EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
+
+    lifecycle.reset_state();
     EXPECT_EQ(lifecycle.state(), LifecycleState::uninitialized);
+
+    device.fail_at.reset();
+    EXPECT_EQ(lifecycle.begin(), SensorStatus::ok);
+    EXPECT_EQ(lifecycle.state(), LifecycleState::ready);
+    EXPECT_EQ(device.calls.size(), 3U + startup_sequence.size());
 }
 
-TEST(SensorLifecycle, SampleKeepsReadySensorReady)
+TEST(SensorLifecycle, BeginDoesNotRepeatInitializationWhileReady)
 {
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.initialization_succeeded();
-    lifecycle.receive_sample();
+    FakeSensorDevice device;
+    SensorLifecycle lifecycle(device);
+
+    EXPECT_EQ(lifecycle.begin(), SensorStatus::ok);
+    EXPECT_EQ(lifecycle.begin(), SensorStatus::invalid_state);
+
+    EXPECT_EQ(device.calls, startup_sequence);
     EXPECT_EQ(lifecycle.state(), LifecycleState::ready);
 }
 
-TEST(SensorLifecycle, SampleBeforeInitializationDoesNotBecomeReady)
+TEST(SensorLifecycle, ResetStateDoesNotInvokeDevice)
 {
-    SensorLifecycle lifecycle;
-    lifecycle.receive_sample();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::uninitialized);
-}
+    FakeSensorDevice device;
+    SensorLifecycle lifecycle(device);
+    lifecycle.reset_state();
 
-TEST(SensorLifecycle, BeginFromFaultStartsNewAttempt)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.fail();
-    lifecycle.begin();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::initializing);
-}
-
-TEST(SensorLifecycle, InitializationFailureCanBeReset)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.fail();
-    lifecycle.reset();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::uninitialized);
-}
-
-TEST(SensorLifecycle, SampleDoesNotRecoverFaultedSensor)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.fail();
-    lifecycle.receive_sample();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
-}
-
-TEST(SensorLifecycle, ReadySensorCanBeResetAndReinitialized)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.initialization_succeeded();
-    lifecycle.reset();
-    lifecycle.begin();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::initializing);
-}
-
-TEST(SensorLifecycle, TimeoutFromReadyEntersFaultState)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.initialization_succeeded();
-    lifecycle.timeout();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
-}
-
-TEST(SensorLifecycle, FaultRemainsFaultAfterSample)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.fail();
-    lifecycle.receive_sample();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
-}
-
-TEST(SensorLifecycle, InitializationSuccessRequiresActiveAttempt)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.initialization_succeeded();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::uninitialized);
-}
-
-TEST(SensorLifecycle, InitializationSuccessDoesNotRecoverFaultedSensor)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.fail();
-    lifecycle.initialization_succeeded();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
-}
-
-TEST(SensorLifecycle, SampleDuringInitializationDoesNotChangeState)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.begin();
-    lifecycle.receive_sample();
-    EXPECT_EQ(lifecycle.state(), LifecycleState::initializing);
-}
-
-TEST(SensorLifecycle, RepeatedResetIsSafe)
-{
-    SensorLifecycle lifecycle;
-    lifecycle.reset();
-    lifecycle.reset();
+    EXPECT_TRUE(device.calls.empty());
     EXPECT_EQ(lifecycle.state(), LifecycleState::uninitialized);
 }
 

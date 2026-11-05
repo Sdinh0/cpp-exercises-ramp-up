@@ -7,6 +7,11 @@ std::vector<Frame> StreamDecoder::feed(std::uint8_t)
     return {};
 }
 
+std::vector<Frame> StreamDecoder::feed(const std::uint8_t*, std::size_t)
+{
+    return {};
+}
+
 void StreamDecoder::reset()
 {
 }

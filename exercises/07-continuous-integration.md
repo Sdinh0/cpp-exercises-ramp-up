@@ -1,10 +1,10 @@
-# Exercises 31-35: Continuous integration
+# Continuous integration
 
 These exercises focus on build and test automation rather than one component.
 The main build configuration is [`CMakeLists.txt`](../CMakeLists.txt); add
 automation under `.github/workflows/` when required.
 
-## 31. CI workflow
+## CI workflow
 
 Add a GitHub Actions workflow that configures the CMake project, builds it, and
 runs CTest on both pushes and pull requests.
@@ -13,7 +13,7 @@ runs CTest on both pushes and pull requests.
 - **Verify:** inspect the workflow and run the same configure/build/test
   commands locally.
 
-## 32. Failure visibility
+## Failure visibility
 
 Temporarily make an assertion fail and confirm the test command and CI job
 report failure with a nonzero result. Restore the test immediately afterward;
@@ -23,7 +23,7 @@ do not commit the temporary defect.
 - **Verify:** run the focused test and confirm it fails, then restore and
   confirm it passes.
 
-## 33. Runner matrix
+## Runner matrix
 
 Run the workflow on Windows and at least one Linux runner. If a real project
 constraint prevents that, record the constraint and its impact.
@@ -32,7 +32,7 @@ constraint prevents that, record the constraint and its impact.
 - **Verify:** check both runner configurations in the workflow or document the
   constraint.
 
-## 34. Repeatability
+## Repeatability
 
 Using only the commands documented in `README.md`, configure a fresh build
 directory, compile the project, and run all tests.
@@ -40,7 +40,7 @@ directory, compile the project, and run all tests.
 - **Update:** `README.md` only if its commands are incomplete or inaccurate
 - **Verify:** configure/build/CTest from a new build directory.
 
-## 35. Regression task
+## Regression task
 
 Introduce a temporary local defect and confirm CI catches it. Revert only that
 temporary edit afterward; do not discard unrelated work.
