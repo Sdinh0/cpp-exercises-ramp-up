@@ -199,7 +199,8 @@ SensorStatus SensorDriver::transact(std::uint8_t command,
         }
 
         const auto frames = decoder_.feed(buffer.data(), read_result.transferred);
-        for (const auto& frame : frames) {
+        if (!frames.empty()) {
+            const auto& frame = frames.front();
             if (frame.command !=
                     static_cast<std::uint8_t>(command | response_mask)) {
                 return SensorStatus::unexpected_response;

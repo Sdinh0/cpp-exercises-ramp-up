@@ -32,7 +32,8 @@ std::optional<std::int32_t> SampleWindow::average() const
         for (const auto& sample : samples_) {
             sum += sample;
         }
-        return sum / static_cast<long long>(samples_.size());
+        const auto average = sum / static_cast<long long>(samples_.size());
+        return static_cast<std::int32_t>(average);
     }
 }
 
