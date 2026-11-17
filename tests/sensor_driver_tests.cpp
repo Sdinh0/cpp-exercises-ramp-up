@@ -19,10 +19,10 @@ using sensor::IoResult;
 using sensor::IoStatus;
 using sensor::LifecycleState;
 using sensor::SampleWindow;
-using sensor::SensorStatus;
 using sensor::SensorDriver;
 using sensor::SensorHal;
 using sensor::SensorLifecycle;
+using sensor::SensorStatus;
 using sensor::StreamDecoder;
 
 struct Request {
@@ -31,10 +31,8 @@ struct Request {
 };
 
 class SimulatedSensor final : public SensorHal {
-public:
-    IoResult write(const std::uint8_t* data,
-                   std::size_t size,
-                   std::uint32_t) override
+  public:
+    IoResult write(const std::uint8_t *data, std::size_t size, std::uint32_t) override
     {
         ++write_calls;
         if (fail_write) {
@@ -60,16 +58,14 @@ public:
         write_sizes.push_back(size);
         for (std::size_t index = 0; index < size; ++index) {
             const auto byte = data[index];
-            for (const auto& frame : request_decoder.feed(byte)) {
+            for (const auto &frame : request_decoder.feed(byte)) {
                 handle(frame);
             }
         }
         return {IoStatus::ok, size};
     }
 
-    IoResult read(std::uint8_t* data,
-                  std::size_t capacity,
-                  std::uint32_t timeout_ms) override
+    IoResult read(std::uint8_t *data, std::size_t capacity, std::uint32_t timeout_ms) override
     {
         ++read_calls;
         if (fail_read) {
@@ -91,8 +87,7 @@ public:
             return {IoStatus::ok, capacity + 1};
         }
 
-        const auto count =
-            std::min({capacity, max_read_size, response_bytes.size()});
+        const auto count = std::min({capacity, max_read_size, response_bytes.size()});
         for (std::size_t index = 0; index < count; ++index) {
             data[index] = response_bytes.front();
             response_bytes.pop_front();
@@ -105,7 +100,7 @@ public:
         samples.push_back(sample);
     }
 
-    void handle(const Frame& request)
+    void handle(const Frame &request)
     {
         requests.push_back({request.command, request.payload});
 
@@ -118,8 +113,7 @@ public:
             running = false;
             break;
         case SensorDriver::configure_command:
-            if (!reset_done || request.payload.size() != 2 ||
-                !accept_configuration ||
+            if (!reset_done || request.payload.size() != 2 || !accept_configuration ||
                 request.payload[0] != SensorDriver::sample_rate_hz ||
                 request.payload[1] != SensorDriver::sample_range_g) {
                 payload[0] = 1;
@@ -159,10 +153,8 @@ public:
             break;
         }
 
-        Frame response{
-            static_cast<std::uint8_t>(request.command | SensorDriver::response_mask),
-            payload
-        };
+        Frame response{static_cast<std::uint8_t>(request.command | SensorDriver::response_mask),
+                       payload};
         if (empty_response_payload) {
             response.payload.clear();
             empty_response_payload = false;
@@ -217,7 +209,7 @@ public:
     bool noise_until_deadline{};
 };
 
-SensorStatus initialize(SensorDriver& driver)
+SensorStatus initialize(SensorDriver &driver)
 {
     auto status = driver.hardware_reset();
     if (status != SensorStatus::ok) {
@@ -242,13 +234,11 @@ TEST(SensorDriver, EncodesOrderedStartupCommandsAndParsesResponses)
     EXPECT_EQ(initialize(driver), SensorStatus::ok);
     ASSERT_EQ(simulated_sensor.requests.size(), 4U);
     EXPECT_EQ(simulated_sensor.requests[0].command, SensorDriver::reset_command);
-    EXPECT_EQ(simulated_sensor.requests[1].command,
-              SensorDriver::configure_command);
-    EXPECT_EQ(simulated_sensor.requests[1].payload,
-              (std::vector<std::uint8_t>{SensorDriver::sample_rate_hz,
-                                         SensorDriver::sample_range_g}));
-    EXPECT_EQ(simulated_sensor.requests[2].command,
-              SensorDriver::self_test_command);
+    EXPECT_EQ(simulated_sensor.requests[1].command, SensorDriver::configure_command);
+    EXPECT_EQ(
+        simulated_sensor.requests[1].payload,
+        (std::vector<std::uint8_t>{SensorDriver::sample_rate_hz, SensorDriver::sample_range_g}));
+    EXPECT_EQ(simulated_sensor.requests[2].command, SensorDriver::self_test_command);
     EXPECT_EQ(simulated_sensor.requests[3].command, SensorDriver::start_command);
     EXPECT_TRUE(simulated_sensor.running);
 }
@@ -275,8 +265,7 @@ TEST(SensorDriver, StopsInitializationWhenTheSensorRejectsConfiguration)
 
     EXPECT_EQ(driver.configure(), SensorStatus::sensor_rejected);
     ASSERT_EQ(simulated_sensor.requests.size(), 1U);
-    EXPECT_EQ(simulated_sensor.requests.front().command,
-              SensorDriver::configure_command);
+    EXPECT_EQ(simulated_sensor.requests.front().command, SensorDriver::configure_command);
     EXPECT_EQ(driver.self_test(), SensorStatus::invalid_state);
     EXPECT_FALSE(simulated_sensor.running);
 }
@@ -302,8 +291,7 @@ TEST(SensorDriver, BadChecksumResponseIsRejected)
 
     EXPECT_NE(driver.hardware_reset(), SensorStatus::ok);
     ASSERT_EQ(simulated_sensor.requests.size(), 1U);
-    EXPECT_EQ(simulated_sensor.requests.front().command,
-              SensorDriver::reset_command);
+    EXPECT_EQ(simulated_sensor.requests.front().command, SensorDriver::reset_command);
     EXPECT_GT(simulated_sensor.read_calls, 0U);
 }
 
@@ -315,8 +303,7 @@ TEST(SensorDriver, StreamDecoderRecoversFromLeadingTransportNoise)
 
     EXPECT_EQ(driver.hardware_reset(), SensorStatus::ok);
     ASSERT_EQ(simulated_sensor.requests.size(), 1U);
-    EXPECT_EQ(simulated_sensor.requests.front().command,
-              SensorDriver::reset_command);
+    EXPECT_EQ(simulated_sensor.requests.front().command, SensorDriver::reset_command);
 }
 
 TEST(SensorDriver, TransportErrorsAreReported)
@@ -416,8 +403,7 @@ TEST(SensorDriver, ReadTimeoutFailsTheTransaction)
 
     EXPECT_EQ(driver.hardware_reset(), SensorStatus::read_timeout);
     ASSERT_EQ(simulated_sensor.requests.size(), 1U);
-    EXPECT_EQ(simulated_sensor.requests.front().command,
-              SensorDriver::reset_command);
+    EXPECT_EQ(simulated_sensor.requests.front().command, SensorDriver::reset_command);
     EXPECT_GT(simulated_sensor.read_calls, 0U);
 }
 
@@ -434,14 +420,13 @@ TEST(SensorDriver, ReadDeadlineExpiresAfterSuccessfulNoiseReads)
 TEST(SensorDriver, IgnoresResponseForAnotherCommand)
 {
     SimulatedSensor simulated_sensor;
-    simulated_sensor.response_command = static_cast<std::uint8_t>(
-        SensorDriver::configure_command | SensorDriver::response_mask);
+    simulated_sensor.response_command =
+        static_cast<std::uint8_t>(SensorDriver::configure_command | SensorDriver::response_mask);
     SensorDriver driver(simulated_sensor);
 
     EXPECT_EQ(driver.hardware_reset(), SensorStatus::unexpected_response);
     ASSERT_EQ(simulated_sensor.requests.size(), 1U);
-    EXPECT_EQ(simulated_sensor.requests.front().command,
-              SensorDriver::reset_command);
+    EXPECT_EQ(simulated_sensor.requests.front().command, SensorDriver::reset_command);
     EXPECT_GT(simulated_sensor.read_calls, 0U);
 }
 
@@ -463,8 +448,7 @@ TEST(SensorDriver, ReadsSignedSamplesAndFeedsTheExistingSampleWindow)
 
     ASSERT_TRUE(window.average().has_value());
     EXPECT_EQ(*window.average(), 4);
-    EXPECT_EQ(simulated_sensor.requests.back().command,
-              SensorDriver::read_sample_command);
+    EXPECT_EQ(simulated_sensor.requests.back().command, SensorDriver::read_sample_command);
 }
 
 TEST(SensorStackIntegration, StartsDriverAndFeedsDecodedSamplesToWindow)
@@ -490,4 +474,4 @@ TEST(SensorStackIntegration, StartsDriverAndFeedsDecodedSamplesToWindow)
     EXPECT_EQ(*window.average(), 150);
 }
 
-}  // namespace
+} // namespace

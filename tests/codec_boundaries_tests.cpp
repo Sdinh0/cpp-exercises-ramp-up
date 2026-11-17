@@ -16,7 +16,7 @@ Frame sample_frame()
     return Frame{0x10, {0x01, 0x02}};
 }
 
-std::vector<std::uint8_t> wire_frame(const Frame& frame)
+std::vector<std::uint8_t> wire_frame(const Frame &frame)
 {
     auto encoded = Codec::encode(frame);
     return encoded;
@@ -49,8 +49,8 @@ TEST(CodecBoundaries, DecodesMaximumPayload)
 TEST(CodecBoundaries, RejectsPayloadLargerThanMaximumWhenDecoding)
 {
     const auto payload_size = Codec::max_payload_size + 1;
-    std::vector<std::uint8_t> bytes{
-        Codec::sync_byte, 0x31, static_cast<std::uint8_t>(payload_size)};
+    std::vector<std::uint8_t> bytes{Codec::sync_byte, 0x31,
+                                    static_cast<std::uint8_t>(payload_size)};
     bytes.insert(bytes.end(), payload_size, 0x5A);
     bytes.push_back(0x00);
 
@@ -86,4 +86,4 @@ TEST(CodecBoundaries, PreservesCommandAndAllByteValuesOnRoundTrip)
     EXPECT_EQ(result.frame.payload, frame.payload);
 }
 
-}  // namespace
+} // namespace

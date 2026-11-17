@@ -16,7 +16,7 @@ Frame sample_frame()
     return Frame{0x10, {0x01, 0x02}};
 }
 
-std::vector<std::uint8_t> wire_frame(const Frame& frame)
+std::vector<std::uint8_t> wire_frame(const Frame &frame)
 {
     auto encoded = Codec::encode(frame);
     return encoded;
@@ -55,8 +55,7 @@ TEST(StreamDecoder, AcceptsAFrameSplitAcrossInputChunks)
     EXPECT_TRUE(first.empty());
     EXPECT_EQ(decoder.buffered_size(), 2U);
 
-    const auto second =
-        decoder.feed(encoded.data() + 2, encoded.size() - 2);
+    const auto second = decoder.feed(encoded.data() + 2, encoded.size() - 2);
     ASSERT_EQ(second.size(), 1U);
     EXPECT_EQ(second.front().command, sample_frame().command);
     EXPECT_EQ(second.front().payload, sample_frame().payload);
@@ -199,4 +198,4 @@ TEST(StreamDecoder, EmitsConsecutiveFrames)
     EXPECT_EQ(emitted, 2U);
 }
 
-}  // namespace
+} // namespace

@@ -1,11 +1,10 @@
 #include "sensor/sensor.hpp"
 
+#include <numeric>
+
 namespace sensor {
 
-SampleWindow::SampleWindow(std::size_t capacity)
-    : capacity_(capacity)
-{
-}
+SampleWindow::SampleWindow(std::size_t capacity) : capacity_(capacity) {}
 
 void SampleWindow::add(std::int32_t sample)
 {
@@ -26,14 +25,10 @@ std::optional<std::int32_t> SampleWindow::average() const
     if (samples_.empty()) {
         // No average exists until at least one sample has been added.
         return std::nullopt;
-    }
-    else{
-        long long sum = 0;
-        for (const auto& sample : samples_) {
-            sum += sample;
-        }
-        const auto average = sum / static_cast<long long>(samples_.size());
-        return static_cast<std::int32_t>(average);
+    } else {
+        const auto sum = std::accumulate(samples_.begin(), samples_.end(), 0LL);
+        const auto mean_value = sum / static_cast<long long>(samples_.size());
+        return static_cast<std::int32_t>(mean_value);
     }
 }
 
@@ -57,4 +52,4 @@ void SampleWindow::clear()
     samples_.clear();
 }
 
-}  // namespace sensor
+} // namespace sensor

@@ -15,15 +15,10 @@ using sensor::SensorDevice;
 using sensor::SensorLifecycle;
 using sensor::SensorStatus;
 
-enum class StartupCall {
-    hardware_reset,
-    configure,
-    self_test,
-    start
-};
+enum class StartupCall { hardware_reset, configure, self_test, start };
 
 class FakeSensorDevice final : public SensorDevice {
-public:
+  public:
     SensorStatus hardware_reset() override
     {
         return invoke(StartupCall::hardware_reset);
@@ -49,31 +44,25 @@ public:
         return {SensorStatus::invalid_state, 0};
     }
 
-    SensorLifecycle* lifecycle{};
+    SensorLifecycle *lifecycle{};
     std::optional<StartupCall> fail_at;
     SensorStatus failure_status{SensorStatus::sensor_rejected};
     std::vector<StartupCall> calls;
     std::vector<LifecycleState> states_seen;
 
-private:
+  private:
     SensorStatus invoke(StartupCall call)
     {
         calls.push_back(call);
         if (lifecycle != nullptr) {
             states_seen.push_back(lifecycle->state());
         }
-        return fail_at.has_value() && *fail_at == call
-            ? failure_status
-            : SensorStatus::ok;
+        return fail_at.has_value() && *fail_at == call ? failure_status : SensorStatus::ok;
     }
 };
 
-const std::vector<StartupCall> startup_sequence{
-    StartupCall::hardware_reset,
-    StartupCall::configure,
-    StartupCall::self_test,
-    StartupCall::start
-};
+const std::vector<StartupCall> startup_sequence{StartupCall::hardware_reset, StartupCall::configure,
+                                                StartupCall::self_test, StartupCall::start};
 
 TEST(SensorLifecycle, StartsUninitialized)
 {
@@ -92,16 +81,13 @@ TEST(SensorLifecycle, StartsDeviceInOrder)
 
     EXPECT_EQ(device.calls, startup_sequence);
     EXPECT_EQ(device.states_seen,
-              std::vector<LifecycleState>(startup_sequence.size(),
-                                          LifecycleState::initializing));
+              std::vector<LifecycleState>(startup_sequence.size(), LifecycleState::initializing));
     EXPECT_EQ(lifecycle.state(), LifecycleState::ready);
 }
 
 TEST(SensorLifecycle, StopsAtTheFirstFailedStartupStep)
 {
-    for (std::size_t failure_index = 0;
-         failure_index < startup_sequence.size();
-         ++failure_index) {
+    for (std::size_t failure_index = 0; failure_index < startup_sequence.size(); ++failure_index) {
         SCOPED_TRACE(failure_index);
 
         FakeSensorDevice device;
@@ -111,9 +97,8 @@ TEST(SensorLifecycle, StopsAtTheFirstFailedStartupStep)
 
         EXPECT_EQ(lifecycle.begin(), SensorStatus::sensor_rejected);
 
-        const auto expected_calls =
-            std::vector<StartupCall>(startup_sequence.begin(),
-                                     startup_sequence.begin() + failure_index + 1);
+        const auto expected_calls = std::vector<StartupCall>(
+            startup_sequence.begin(), startup_sequence.begin() + failure_index + 1);
         EXPECT_EQ(device.calls, expected_calls);
         EXPECT_EQ(lifecycle.state(), LifecycleState::fault);
     }
@@ -163,4 +148,4 @@ TEST(SensorLifecycle, ResetStateDoesNotInvokeDevice)
     EXPECT_EQ(lifecycle.state(), LifecycleState::uninitialized);
 }
 
-}  // namespace
+} // namespace

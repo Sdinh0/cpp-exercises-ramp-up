@@ -16,7 +16,7 @@ Frame sample_frame()
     return Frame{0x10, {0x01, 0x02}};
 }
 
-std::vector<std::uint8_t> wire_frame(const Frame& frame)
+std::vector<std::uint8_t> wire_frame(const Frame &frame)
 {
     auto encoded = Codec::encode(frame);
     return encoded;
@@ -97,4 +97,4 @@ TEST(StreamDecoder, BoundsPartialFrameBuffer)
     EXPECT_LE(decoder.buffered_size(), Codec::max_payload_size + 4);
 }
 
-}  // namespace
+} // namespace

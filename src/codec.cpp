@@ -2,7 +2,7 @@
 
 namespace sensor {
 
-std::uint8_t Codec::crc8(const std::vector<std::uint8_t>& bytes)
+std::uint8_t Codec::crc8(const std::vector<std::uint8_t> &bytes)
 {
     // CRC-8/ATM uses polynomial 0x07 with an initial value of zero.
     const std::uint8_t polynomial = 0x07;
@@ -20,7 +20,7 @@ std::uint8_t Codec::crc8(const std::vector<std::uint8_t>& bytes)
     return crc;
 }
 
-std::vector<std::uint8_t> Codec::encode(const Frame& frame)
+std::vector<std::uint8_t> Codec::encode(const Frame &frame)
 {
     std::vector<std::uint8_t> encoded;
 
@@ -37,7 +37,7 @@ std::vector<std::uint8_t> Codec::encode(const Frame& frame)
     return encoded;
 }
 
-DecodeResult Codec::decode(const std::vector<std::uint8_t>& bytes)
+DecodeResult Codec::decode(const std::vector<std::uint8_t> &bytes)
 {
     DecodeResult result;
 
@@ -45,8 +45,7 @@ DecodeResult Codec::decode(const std::vector<std::uint8_t>& bytes)
         result.ok = false;
         result.error = ParseError::frame_too_short;
         return result;
-    }
-    else if (bytes[0] != Codec::sync_byte) {
+    } else if (bytes[0] != Codec::sync_byte) {
         result.ok = false;
         result.error = ParseError::bad_sync;
         return result;
@@ -56,7 +55,8 @@ DecodeResult Codec::decode(const std::vector<std::uint8_t>& bytes)
     const std::uint8_t payload_length = bytes[2];
 
     // Reject both truncated and trailing data: decode accepts exactly one frame.
-    if (bytes.size() != static_cast<std::size_t>(4 + payload_length) || payload_length > Codec::max_payload_size) {
+    if (bytes.size() != static_cast<std::size_t>(4 + payload_length) ||
+        payload_length > Codec::max_payload_size) {
         result.ok = false;
         result.error = ParseError::bad_length;
         return result;
@@ -67,8 +67,7 @@ DecodeResult Codec::decode(const std::vector<std::uint8_t>& bytes)
     if (bytes.back() != crc8(std::vector<std::uint8_t>(bytes.begin() + 1, bytes.end() - 1))) {
         result.ok = false;
         result.error = ParseError::bad_checksum;
-    }
-    else {
+    } else {
         result.ok = true;
         result.error = ParseError::none;
     }
@@ -76,4 +75,4 @@ DecodeResult Codec::decode(const std::vector<std::uint8_t>& bytes)
     return result;
 }
 
-}  // namespace sensor
+} // namespace sensor

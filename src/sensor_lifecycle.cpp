@@ -2,10 +2,7 @@
 
 namespace sensor {
 
-SensorLifecycle::SensorLifecycle(SensorDevice& device)
-    : device_(device)
-{
-}
+SensorLifecycle::SensorLifecycle(SensorDevice &device) : device_(device) {}
 
 LifecycleState SensorLifecycle::state() const
 {
@@ -15,10 +12,10 @@ LifecycleState SensorLifecycle::state() const
 SensorStatus SensorLifecycle::begin()
 {
     SensorStatus status = SensorStatus::no_progress;
-    if ( state_ != LifecycleState::uninitialized ) {
+    if (state_ != LifecycleState::uninitialized) {
         return SensorStatus::invalid_state;
     }
-    
+
     // Expose initialization before invoking device operations.
     state_ = LifecycleState::initializing;
 
@@ -57,4 +54,4 @@ void SensorLifecycle::reset_state()
     state_ = LifecycleState::uninitialized;
 }
 
-}  // namespace sensor
+} // namespace sensor
