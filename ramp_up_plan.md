@@ -2,35 +2,31 @@
 
 ## Starting point and goal
 
-This plan is tailored to the skill levels in `Skill_matrix.pdf` and the goals in
-`start.md`:
+This plan uses the portable C++17 sensor project in this repository to develop
+modern C++, CMake, automated testing, TDD, and reliable CI practices. The
+project includes a frame codec, stream decoder, sample window, sensor driver,
+lifecycle coordinator, and host-side tests.
 
-- **Build on:** C, embedded development and microcontrollers, Make, Jenkins,
-  GitHub Actions, and Git.
-- **Develop:** modern C++, CMake, automated testing and test frameworks, TDD,
-  and reliable CI practices.
-
-The aim is to become productive designing, testing, building, and integrating
-C++ components in an embedded-oriented project—not to relearn programming or
-general CI concepts from scratch.
+The goal is to design, test, build, and integrate embedded-oriented C++
+components while keeping hardware-specific I/O separate from the
+host-testable core.
 
 ## Suggested approach
 
 Work through the topic guides at a pace that fits your goals. For each
 behavior, read the contract and focused test, understand the expected failure,
 implement the behavior, and review the result. The companion
-[`README.md`](./README.md) explains the starter project and test commands;
-[`EXERCISES.md`](./EXERCISES.md) gives the
-topic progression.
+[`README.md`](./README.md) explains the project and test commands;
+[`EXERCISES.md`](./EXERCISES.md) gives the topic progression and source/test
+map.
 
 ## Capstone project
 
-Create a small portable C++ library for an embedded subsystem, such as a sensor
-protocol parser and device state machine. Keep hardware access behind a narrow
-byte-transport interface so the core can be built and tested on a desktop
-without a board. The simulated sensor should use the existing frame codec,
-stream decoder, and sample processing components; a real board or target
-toolchain is optional.
+Use the existing portable sensor library as the capstone. Its codec, stream
+decoder, sample window, driver, and lifecycle operate independently of board
+hardware. Hardware access belongs behind the byte-transport `SensorHal`
+interface, allowing the core and simulated sensor to be built and tested on a
+desktop. A real board or target toolchain is optional.
 
 ## Learning themes
 
@@ -53,7 +49,7 @@ toolchain is optional.
 9. **CI hardening** — check failure behavior, diagnostics, and pull-request
    workflow.
 10. **Consolidation** — rebuild from a clean checkout, review the capstone, and
-    reassess the skill matrix.
+    reflect on the concepts practiced.
 
 ## Definition of done
 
